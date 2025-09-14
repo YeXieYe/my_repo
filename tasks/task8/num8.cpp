@@ -2,70 +2,70 @@
 
 #define LED_PIN 3
 #define LED_COUNT 64
+#define W 8
+#define H 8
 
-Adafruit_NeoPixel matrix(LED_COUNT, LED_PIN, NEO_RGB + NEO_KHZ800);
+Adafruit_NeoPixel leds(LED_COUNT, LED_PIN, NEO_RGB + NEO_KHZ800);
 
-int LedIndex(int x, int y) {
+inline uint16_t xyToIndex(uint8_t x, uint8_t y) {
   if (y % 2 == 0) {
-    return (y * 8) + x;
+    return y * W + (W - 1 - x);
   } else {
-    return (y * 8) + (7 - x);
+    return y * W + x;
   }
 }
 
+inline void setXY(uint8_t x, uint8_t y, uint32_t c) {
+  if (x < W && y < H) {
+    leds.setPixelColor(xyToIndex(x, y), c);
+  }
+}
+
+const float AMP = 1.0f;
+const float WAVELEN = 1.6f;
+const float SPEED = 0.06f;
+const float X_SCALE = 1.4f;
+const uint8_t FPS = 25;
+const uint16_t FRAME_INTERVAL = 1000 / FPS;
+const uint8_t H_WHITE = 2;
+const uint8_t H_BLUE = 3;
+const uint8_t H_RED = 3;
+uint32_t C_WHITE, C_BLUE, C_RED;
+unsigned long lastFrame = 0;
+float phase = 0.0f;
+
 void setup() {
-  matrix.begin();
-  matrix.setBrightness(50);
-  matrix.clear();
-  matrix.show();
+  leds.begin();
+  leds.setBrightness(60);
+  leds.clear();
+  leds.show();
+  C_WHITE = leds.Color(255, 255, 255);
+  C_BLUE  = leds.Color(0, 0, 255);
+  C_RED   = leds.Color(0, 255, 0);
 }
 
 void loop() {
-  static unsigned long last_effect_change_time = 0;
-  static int current_effect = 0;
-  const unsigned long EFFECT_DURATION = 10000;
-  if (millis() - last_effect_change_time >= EFFECT_DURATION) {
-    current_effect = (current_effect + 1) % 3;
-    last_effect_change_time = millis();
-    matrix.clear();
+  unsigned long now = millis();
+  if (now - lastFrame < FRAME_INTERVAL) {
+    return;
   }
-  switch (current_effect) {
-    case 0:
-      for(int y=0; y<8; y++) {
-        for(int x=0; x<8; x++) {
-          matrix.setPixelColor(LedIndex(x, y), random(256), random(256), random(256));
-        }
+  lastFrame = now;
+  phase += SPEED;
+  leds.clear();
+  for (uint8_t y = 0; y < H; y++) {
+    for (uint8_t x = 0; x < W; x++) {
+      float offset = AMP * sinf((float)x * X_SCALE / WAVELEN + phase);
+      float yy = (float)y + offset;
+      uint32_t color;
+      if (yy < H_WHITE) {
+        color = C_WHITE;
+      } else if (yy < H_WHITE + H_BLUE) {
+        color = C_BLUE;
+      } else {
+        color = C_RED;
       }
-      matrix.show();
-      delay(100);
-      matrix.clear();
-      matrix.show();
-      delay(100);
-      break;
-    case 1:
-      static uint8_t effect2_color_index = 0;
-      static const uint32_t colors[] = {
-        matrix.Color(255, 0, 0),
-        matrix.Color(0, 255, 0),
-        matrix.Color(0, 0, 255),
-        matrix.Color(255, 255, 0),
-        matrix.Color(0, 255, 255),
-        matrix.Color(255, 0, 255)
-      };
-      static const uint8_t num_colors = sizeof(colors) / sizeof(colors[0]);
-      matrix.fill(colors[effect2_color_index]);
-      matrix.show();
-      delay(500);
-      effect2_color_index = (effect2_color_index + 1) % num_colors;
-      break;
-    case 2:
-      for(int y=0; y<8; y++) {
-        for(int x=0; x<8; x++) {
-          matrix.setPixelColor(LedIndex(x, y), random(256), random(256), random(256));
-        }
-      }
-      matrix.show();
-      delay(50);
-      break;
+      setXY(x, y, color);
+    }
   }
-} 
+  leds.show();
+}

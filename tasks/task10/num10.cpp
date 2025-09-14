@@ -1,22 +1,21 @@
 ﻿#include <Servo.h>
 
 Servo myservo;
-int currentAngle = 90;
-int targetAngle = 90;
+int currentAngle = 0;
+int targetAngle = 0;
 
 void setup() {
   myservo.attach(9);
   Serial.begin(9600);
   Serial.println("Enter angle (0-180):");
-  myservo.write(90);
-  delay(1000);
+  myservo.write(0);
 }
 
 void loop() {
   if (Serial.available() > 0) {
     String input = Serial.readStringUntil('\n');
     input.trim();
-    if (input.length() > 0 && isDigits(input)) {
+    if (isDigits(input)) {
       int newAngle = input.toInt();
       if (newAngle >= 0 && newAngle <= 180) {
         targetAngle = newAngle;
